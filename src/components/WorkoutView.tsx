@@ -8,36 +8,58 @@ interface WorkoutViewProps {
     workout: Workout;
 }
 
+function isDurationDraftInvalid(draft: string | undefined) {
+    return draft !== undefined && (draft === '' || isNaN(Number(draft)));
+}
+
 function WorkoutView({ workout }: WorkoutViewProps) {
     const [workoutName, setWorkoutName] = useState(workout.workoutName);
     const [steps, setSteps] = useState(workout.steps);
     const [valueBeforeEdit, setValueBeforeEdit] = useState<number | null>(null);
+    const [durationDrafts, setDurationDrafts] = useState<{ [stepOrder: number]: string }>({});
 
     function handleDurationChange(targetStepOrder: number, newValue: number) {
-        const updatedSteps = steps.map((step) => 
+        const updatedSteps = steps.map((step) =>
             step.stepOrder === targetStepOrder
-            ? {...step, durationValue: newValue }
-            : {...step}
+                ? { ...step, durationValue: newValue }
+                : step
         );
         setSteps(updatedSteps);
     }
 
     function handleDurationFocus(currentValue: number) {
-        setValueBeforeEdit(currentValue)
+        setValueBeforeEdit(currentValue);
     }
 
-    function handleDurationBlur(step: WorkoutStep) {
-        if (valueBeforeEdit !== null 
-            //&& step.durationValue !== valueBeforeEdit
-            ) {
+    function handleDurationBlur(step: WorkoutStep, newValue: number) {
+        if (valueBeforeEdit !== null && newValue !== valueBeforeEdit) {
             posthog.capture('workout_duration_edited', {
                 step_order: step.stepOrder,
                 intensity: step.intensity,
                 old_value: valueBeforeEdit,
-                new_value: step.durationValue,
-            })
+                new_value: newValue,
+            });
         }
         setValueBeforeEdit(null);
+    }
+
+    function handleAddStep() {
+        const nextStepOrder = steps.length > 0
+            ? Math.max(...steps.map((step) => step.stepOrder)) + 1
+            : 1;
+
+        const newStep: WorkoutStep = {
+            stepOrder: nextStepOrder,
+            intensity: 'ACTIVE',
+            durationType: 'DISTANCE',
+            durationValue: 1000,
+        };
+
+        setSteps([...steps, newStep]);
+    }
+
+    function handleRemoveStep(targetStepOrder: number) {
+        setSteps(steps.filter((step) => step.stepOrder != targetStepOrder))
     }
 
     return (
@@ -46,20 +68,39 @@ function WorkoutView({ workout }: WorkoutViewProps) {
                 value={workoutName}
                 onChange={(e) => setWorkoutName(e.target.value)}
             />
-           {steps.map((step) => (
-            <p key={step.stepOrder}>
-                {step.intensity}:{' '}
-                <input
-                    type="number"
-                    value={step.durationValue}
-                    onChange={(e) => handleDurationChange(step.stepOrder, Number(e.target.value))}
-                    onFocus={() => handleDurationFocus(step.durationValue)}
-                    onBlur={() => handleDurationBlur(step)}
-                />
-                m ({step.durationType})
-                {step.target?.targetType && <span> - target: {step.target.targetType}</span>}
-            </p>
-           ))}
+            {steps.map((step) => {
+                const draft = durationDrafts[step.stepOrder];
+                const showError = isDurationDraftInvalid(draft);
+
+                return (
+                    <p key={step.stepOrder}>
+                        {step.intensity}:{' '}
+                        <input
+                            type="number"
+                            value={draft ?? step.durationValue}
+                            placeholder="0"
+                            onChange={(e) =>
+                                setDurationDrafts({ ...durationDrafts, [step.stepOrder]: e.target.value })
+                            }
+                            onFocus={() => handleDurationFocus(step.durationValue)}
+                            onBlur={() => {
+                                const isValid = !isDurationDraftInvalid(draft);
+                                const newValue = isValid ? Number(draft) : step.durationValue;
+                                if (isValid && draft !== undefined) {
+                                    handleDurationChange(step.stepOrder, newValue);
+                                }
+                                handleDurationBlur(step, newValue);
+                            }}
+                            style={showError ? { borderColor: 'red' } : undefined}
+                        />
+                        m ({step.durationType})
+                        {showError && <span style={{ color: 'red' }}> Value cannot be blank</span>}
+                        {step.target?.targetType && <span> - target: {step.target.targetType}</span>}
+                        <button onClick={() => handleRemoveStep(step.stepOrder)}>Remove</button>
+                    </p>
+                );
+            })}
+            <button onClick={handleAddStep}>Add Step</button>
         </div>
     );
 }
