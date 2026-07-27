@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Workout, WorkoutStep } from '../types/workout';
+import { StepIntensity, Workout, WorkoutStep } from '../types/workout';
 import posthog from 'posthog-js';
 
 interface WorkoutViewProps {
@@ -62,6 +62,15 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps(steps.filter((step) => step.stepOrder != targetStepOrder))
     }
 
+    function handleIntensityChange(targetStepOrder: number, newIntensity: StepIntensity){
+        const updatedSteps = steps.map((step) =>
+            step.stepOrder === targetStepOrder
+                ? {...step, intensity: newIntensity}
+                : step
+            );
+            setSteps(updatedSteps);
+    }
+
     return (
         <div>
             <input
@@ -74,7 +83,18 @@ function WorkoutView({ workout }: WorkoutViewProps) {
 
                 return (
                     <p key={step.stepOrder}>
-                        {step.intensity}:{' '}
+                        <select
+                            value={step.intensity}
+                            onChange={(e) => handleIntensityChange(step.stepOrder, e.target.value as StepIntensity)}
+                        >
+                            <option value="WARMUP">WARMUP</option>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="COOLDOWN">COOLDOWN</option>
+                            <option value="RECOVERY">RECOVERY</option>
+                            <option value="INTERVAL">INTERVAL</option>
+                            <option value="REST">REST</option>
+                        </select>
+                        {' '}
                         <input
                             type="number"
                             value={draft ?? step.durationValue}
