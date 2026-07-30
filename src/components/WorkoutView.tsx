@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { StepIntensity, Workout, WorkoutStep } from '../types/workout';
+import { StepIntensity, Workout, WorkoutStep, Target } from '../types/workout';
 import posthog from 'posthog-js';
 
 interface WorkoutViewProps {
@@ -17,59 +17,105 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     const [steps, setSteps] = useState(workout.steps);
     const [valueBeforeEdit, setValueBeforeEdit] = useState<number | null>(null);
     const [durationDrafts, setDurationDrafts] = useState<{ [stepOrder: number]: string }>({});
+    const [targetDrafts, setTargetDrafts] = useState<{ [key: string]: string }>({});
 
-    function handleDurationChange(targetStepOrder: number, newValue: number) {
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder
-                ? { ...step, durationValue: newValue }
-                : step
+function targetDraftKey(stepOrder: number, field: string){
+    return `${stepOrder}-${field}`;
+}
+
+function handleTargetValueChange(targetStepOrder: number, field: string, newValue: number) {
+    const updatedSteps = steps.map((step) => {
+        if (step.stepOrder !== targetStepOrder || !step.target) return step;
+        return {...step, target: {...step.target, [field]: newValue } as Target};
+    });
+    setSteps(updatedSteps);
+}
+
+function handleDurationChange(targetStepOrder: number, newValue: number) {
+    const updatedSteps = steps.map((step) =>
+        step.stepOrder === targetStepOrder
+            ? { ...step, durationValue: newValue }
+            : step
+    );
+    setSteps(updatedSteps);
+}
+
+function handleDurationFocus(currentValue: number) {
+    setValueBeforeEdit(currentValue);
+}
+
+function handleDurationBlur(step: WorkoutStep, newValue: number) {
+    if (valueBeforeEdit !== null && newValue !== valueBeforeEdit) {
+        posthog.capture('workout_duration_edited', {
+            step_order: step.stepOrder,
+            intensity: step.intensity,
+            old_value: valueBeforeEdit,
+            new_value: newValue,
+        });
+    }
+    setValueBeforeEdit(null);
+}
+
+function handleAddStep() {
+    const nextStepOrder = steps.length > 0
+        ? Math.max(...steps.map((step) => step.stepOrder)) + 1
+        : 1;
+
+    const newStep: WorkoutStep = {
+        stepOrder: nextStepOrder,
+        intensity: 'ACTIVE',
+        durationType: 'DISTANCE',
+        durationValue: 1000,
+    };
+
+    setSteps([...steps, newStep]);
+}
+
+function handleRemoveStep(targetStepOrder: number) {
+    setSteps(steps.filter((step) => step.stepOrder != targetStepOrder))
+}
+
+function handleRemoveTarget(targetStepOrder: number) {
+    const updatedSteps = steps.map((step) =>
+        step.stepOrder === targetStepOrder
+            ? {...step, target: undefined}
+        : step
+    );
+    setSteps(updatedSteps)
+}
+
+
+function handleIntensityChange(targetStepOrder: number, newIntensity: StepIntensity){
+    const updatedSteps = steps.map((step) =>
+        step.stepOrder === targetStepOrder
+            ? {...step, intensity: newIntensity}
+            : step
         );
         setSteps(updatedSteps);
-    }
+}
 
-    function handleDurationFocus(currentValue: number) {
-        setValueBeforeEdit(currentValue);
-    }
+function handleTargetTypeChange(targetStepOrder: number, newTargetType: 'PACE' | 'HEART_RATE') {
+let newTarget: Target;
 
-    function handleDurationBlur(step: WorkoutStep, newValue: number) {
-        if (valueBeforeEdit !== null && newValue !== valueBeforeEdit) {
-            posthog.capture('workout_duration_edited', {
-                step_order: step.stepOrder,
-                intensity: step.intensity,
-                old_value: valueBeforeEdit,
-                new_value: newValue,
-            });
-        }
-        setValueBeforeEdit(null);
-    }
+switch (newTargetType) {
+    case 'PACE':
+        newTarget = { targetType: "PACE", paceMinValue: 0.0, paceMaxValue: 0.0 };
+        break;
+    case 'HEART_RATE':
+        newTarget = { targetType: "HEART_RATE", hrMinValue: 0.0, hrMaxValue: 0.0 };
+        break;
+    default:
+        throw new Error(`Unhandled target type: ${newTargetType}`);
+}
 
-    function handleAddStep() {
-        const nextStepOrder = steps.length > 0
-            ? Math.max(...steps.map((step) => step.stepOrder)) + 1
-            : 1;
+const updatedSteps = steps.map((step) =>
+    step.stepOrder === targetStepOrder
+        ? { ...step, target: newTarget }
+        : step
+);
+setSteps(updatedSteps);
+}
 
-        const newStep: WorkoutStep = {
-            stepOrder: nextStepOrder,
-            intensity: 'ACTIVE',
-            durationType: 'DISTANCE',
-            durationValue: 1000,
-        };
-
-        setSteps([...steps, newStep]);
-    }
-
-    function handleRemoveStep(targetStepOrder: number) {
-        setSteps(steps.filter((step) => step.stepOrder != targetStepOrder))
-    }
-
-    function handleIntensityChange(targetStepOrder: number, newIntensity: StepIntensity){
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder
-                ? {...step, intensity: newIntensity}
-                : step
-            );
-            setSteps(updatedSteps);
-    }
 
     return (
         <div>
@@ -115,7 +161,77 @@ function WorkoutView({ workout }: WorkoutViewProps) {
                         />
                         m ({step.durationType})
                         {showError && <span style={{ color: 'red' }}> Value cannot be blank</span>}
-                        {step.target?.targetType && <span> - target: {step.target.targetType}</span>}
+                        <select
+                            value={step.target?.targetType ?? 'NONE'}
+                            onChange={(e) => {
+                                const selected = e.target.value;
+                                if (selected === 'NONE') {
+                                    handleRemoveTarget(step.stepOrder);
+                                } else {
+                                    handleTargetTypeChange(step.stepOrder, selected as 'PACE' | 'HEART_RATE');
+                                }
+                            }}
+                        >
+                            <option value='NONE'>No Target</option>
+                            <option value='PACE'>PACE</option>
+                            <option value='HEART_RATE'>HEART_RATE</option>
+                        </select>
+                        {step.target?.targetType === 'PACE' && (
+                            <>
+                                {' '}Pace:{' '}
+                                <input
+                                    type="number"
+                                    value={targetDrafts[targetDraftKey(step.stepOrder, 'paceMinValue')] ?? step.target.paceMinValue}
+                                    onChange={(e) => setTargetDrafts({...targetDrafts, [targetDraftKey(step.stepOrder, 'paceMinValue')]: e.target.value})}
+                                    onBlur={() => {
+                                        const draft = targetDrafts[targetDraftKey(step.stepOrder, 'paceMinValue')];
+                                        if (draft !== undefined && draft !== '' && !isNaN(Number(draft))) {
+                                            handleTargetValueChange(step.stepOrder, 'paceMinValue', Number(draft));
+                                        }
+                                    }}
+                                />
+                                {' to '}
+                                <input
+                                    type="number"
+                                    value={targetDrafts[targetDraftKey(step.stepOrder, 'paceMaxValue')] ?? step.target.paceMaxValue}
+                                    onChange={(e) => setTargetDrafts({ ...targetDrafts, [targetDraftKey(step.stepOrder, 'paceMaxValue')]: e.target.value })}
+                                    onBlur={() => {
+                                        const draft = targetDrafts[targetDraftKey(step.stepOrder, 'paceMaxValue')];
+                                        if (draft !== undefined && draft !== '' && !isNaN(Number(draft))) {
+                                            handleTargetValueChange(step.stepOrder, 'paceMaxValue', Number(draft));
+                                        }
+                                    }}
+                                />
+                            </>
+                        )}
+                        {step.target?.targetType === 'HEART_RATE' && (
+                            <>
+                                {' '}HR:{' '}
+                                <input
+                                    type="number"
+                                    value={targetDrafts[targetDraftKey(step.stepOrder, 'hrMinValue')] ?? step.target.hrMinValue}
+                                    onChange={(e) => setTargetDrafts({ ...targetDrafts, [targetDraftKey(step.stepOrder, 'hrMinValue')]: e.target.value })}
+                                    onBlur={() => {
+                                        const draft = targetDrafts[targetDraftKey(step.stepOrder, 'hrMinValue')];
+                                        if (draft !== undefined && draft !== '' && !isNaN(Number(draft))) {
+                                            handleTargetValueChange(step.stepOrder, 'hrMinValue', Number(draft));
+                                        }
+                                    }}
+                                />
+                                {' to '}
+                                <input
+                                    type="number"
+                                    value={targetDrafts[targetDraftKey(step.stepOrder, 'hrMaxValue')] ?? step.target.hrMaxValue}
+                                    onChange={(e) => setTargetDrafts({ ...targetDrafts, [targetDraftKey(step.stepOrder, 'hrMaxValue')]: e.target.value })}
+                                    onBlur={() => {
+                                        const draft = targetDrafts[targetDraftKey(step.stepOrder, 'hrMaxValue')];
+                                        if (draft !== undefined && draft !== '' && !isNaN(Number(draft))) {
+                                            handleTargetValueChange(step.stepOrder, 'hrMaxValue', Number(draft));
+                                        }
+                                    }}
+                                />
+                            </>
+                        )}
                         <button onClick={() => handleRemoveStep(step.stepOrder)}>Remove</button>
                     </p>
                 );
