@@ -1,12 +1,13 @@
 "use client";
 
-import { WorkoutStep, StepIntensity, Target } from '../types/workout';
+import { WorkoutStep, StepIntensity, NormalStep } from '../types/workout';
 import { isDurationDraftInvalid, targetDraftKey } from './WorkoutView';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+
 interface SortableStepProps {
-    step: WorkoutStep;
+    step: NormalStep;
     durationDrafts: { [stepOrder: number]: string };
     setDurationDrafts: (drafts: { [stepOrder: number]: string }) => void;
     targetDrafts: { [key: string]: string };

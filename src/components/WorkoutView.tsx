@@ -41,6 +41,7 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     }
 
     function handleDurationBlur(step: WorkoutStep, newValue: number) {
+        if (step.type !== "WorkoutStep") return;
         if (valueBeforeEdit !== null && newValue !== valueBeforeEdit) {
             posthog.capture('workout_duration_edited', {
                 step_order: step.stepOrder,
@@ -53,19 +54,18 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     }
 
     function handleAddStep() {
-        const nextStepOrder = steps.length > 0
-            ? Math.max(...steps.map((step) => step.stepOrder)) + 1
-            : 1;
-
-        const newStep: WorkoutStep = {
-            stepOrder: nextStepOrder,
-            intensity: 'ACTIVE',
-            durationType: 'DISTANCE',
-            durationValue: 1000,
-        };
-
-        setSteps([...steps, newStep]);
-    }
+    const nextStepOrder = steps.length > 0
+        ? Math.max(...steps.map((step) => step.stepOrder)) + 1
+        : 1;
+    const newStep: WorkoutStep = {
+        type: 'WorkoutStep',
+        stepOrder: nextStepOrder,
+        intensity: 'ACTIVE',
+        durationType: 'DISTANCE',
+        durationValue: 1000,
+    };
+    setSteps([...steps, newStep]);
+}
 
     function handleRemoveStep(targetStepOrder: number) {
         setSteps(steps.filter((step) => step.stepOrder !== targetStepOrder));
@@ -111,19 +111,20 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps(updatedSteps);
     }
 
-    function handleTargetValueChange(targetStepOrder: number, field: string, newValue: number) {
-        const updatedSteps = steps.map((step) => {
-            if (step.stepOrder !== targetStepOrder || !step.target) return step;
-            return { ...step, target: { ...step.target, [field]: newValue } as Target };
-        });
-        setSteps(updatedSteps);
-    }
+function handleTargetValueChange(targetStepOrder: number, field: string, newValue: number) {
+    const updatedSteps = steps.map((step) => {
+        if (step.type !== "WorkoutStep") return step;
+        if (step.stepOrder !== targetStepOrder || !step.target) return step;
+        return { ...step, target: { ...step.target, [field]: newValue } as Target };
+    });
+    setSteps(updatedSteps);
+}
 
     function handleDragEnd(event: DragEndEvent){
         const { active, over } = event;
 
         if (!over || active.id == over.id) {
-            return
+            return;
         }
 
         const oldIndex = steps.findIndex((step) => step.stepOrder === active.id);
@@ -143,24 +144,33 @@ function WorkoutView({ workout }: WorkoutViewProps) {
                     items={steps.map((step) => step.stepOrder)}
                     strategy={verticalListSortingStrategy}
                 >
-                    {steps.map((step) => (
-                        <SortableStep
-                            key={step.stepOrder}
-                            step={step}
-                            durationDrafts={durationDrafts}
-                            setDurationDrafts={setDurationDrafts}
-                            targetDrafts={targetDrafts}
-                            setTargetDrafts={setTargetDrafts}
-                            handleDurationChange={handleDurationChange}
-                            handleDurationFocus={handleDurationFocus}
-                            handleDurationBlur={handleDurationBlur}
-                            handleRemoveStep={handleRemoveStep}
-                            handleIntensityChange={handleIntensityChange}
-                            handleTargetTypeChange={handleTargetTypeChange}
-                            handleRemoveTarget={handleRemoveTarget}
-                            handleTargetValueChange={handleTargetValueChange}
-                        />
-                    ))}
+                    {steps.map((step) => {
+                        if (step.type === "WorkoutRepeatStep") {
+                            return (
+                                <p key={step.stepOrder}>
+                                    Repeat ×{step.repeatValue} (repeat block — UI coming soon)
+                                </p>
+                            );
+                        }
+                        return (
+                            <SortableStep
+                                key={step.stepOrder}
+                                step={step}
+                                durationDrafts={durationDrafts}
+                                setDurationDrafts={setDurationDrafts}
+                                targetDrafts={targetDrafts}
+                                setTargetDrafts={setTargetDrafts}
+                                handleDurationChange={handleDurationChange}
+                                handleDurationFocus={handleDurationFocus}
+                                handleDurationBlur={handleDurationBlur}
+                                handleRemoveStep={handleRemoveStep}
+                                handleIntensityChange={handleIntensityChange}
+                                handleTargetTypeChange={handleTargetTypeChange}
+                                handleRemoveTarget={handleRemoveTarget}
+                                handleTargetValueChange={handleTargetValueChange}
+                            />
+                        );
+                    })}
                 </SortableContext>
             </DndContext>
             <button onClick={handleAddStep}>Add Step</button>
