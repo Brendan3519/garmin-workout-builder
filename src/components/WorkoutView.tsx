@@ -121,6 +121,18 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps(arrayMove(steps, oldIndex, newIndex));
     }
 
+    function mapStepsRecursive(
+    steps: WorkoutStep[],
+    transform: (step: WorkoutStep) => WorkoutStep
+): WorkoutStep[] {
+    return steps.map((step) => {
+        if (step.type === "WorkoutRepeatStep") {
+            return transform({ ...step, steps: mapStepsRecursive(step.steps, transform) });
+        }
+        return transform(step);
+    });
+}
+
     function renderStep(step: WorkoutStep): React.ReactNode {
         if (step.type === "WorkoutRepeatStep") {
             return (
