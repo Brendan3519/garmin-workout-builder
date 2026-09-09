@@ -13,7 +13,7 @@ interface WorkoutViewProps {
     workout: Workout;
 }
 
-export function isDurationDraftInvalid(draft: string | undefined) {
+export function isNumberDraftInvalid(draft: string | undefined) {
     return draft !== undefined && (draft === '' || isNaN(Number(draft)));
 }
 
@@ -27,13 +27,6 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     const [valueBeforeEdit, setValueBeforeEdit] = useState<number | null>(null);
     const [durationDrafts, setDurationDrafts] = useState<{ [stepOrder: number]: string }>({});
     const [targetDrafts, setTargetDrafts] = useState<{ [key: string]: string }>({});
-
-    function handleDurationChange(targetStepOrder: number, newValue: number) {
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder ? { ...step, durationValue: newValue } : step
-        );
-        setSteps(updatedSteps);
-    }
 
     function handleDurationFocus(currentValue: number) {
         setValueBeforeEdit(currentValue);
@@ -70,47 +63,6 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps(steps.filter((step) => step.stepOrder !== targetStepOrder));
     }
 
-    function handleIntensityChange(targetStepOrder: number, newIntensity: StepIntensity) {
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder ? { ...step, intensity: newIntensity } : step
-        );
-        setSteps(updatedSteps);
-    }
-
-    function handleTargetTypeChange(targetStepOrder: number, newTargetType: 'PACE' | 'HEART_RATE') {
-        let newTarget: Target;
-        switch (newTargetType) {
-            case 'PACE':
-                newTarget = { targetType: "PACE", paceMinValue: 0.0, paceMaxValue: 0.0 };
-                break;
-            case 'HEART_RATE':
-                newTarget = { targetType: "HEART_RATE", hrMinValue: 0.0, hrMaxValue: 0.0 };
-                break;
-            default:
-                throw new Error(`Unhandled target type: ${newTargetType}`);
-        }
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder ? { ...step, target: newTarget } : step
-        );
-        setSteps(updatedSteps);
-    }
-
-    function handleRemoveTarget(targetStepOrder: number) {
-        const updatedSteps = steps.map((step) =>
-            step.stepOrder === targetStepOrder ? { ...step, target: undefined } : step
-        );
-        setSteps(updatedSteps);
-    }
-
-    function handleTargetValueChange(targetStepOrder: number, field: string, newValue: number) {
-        const updatedSteps = steps.map((step) => {
-            if (step.type !== "WorkoutStep") return step;
-            if (step.stepOrder !== targetStepOrder || !step.target) return step;
-            return { ...step, target: { ...step.target, [field]: newValue } as Target };
-        });
-        setSteps(updatedSteps);
-    }
-
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
         if (!over || active.id === over.id) {
@@ -120,6 +72,57 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         const newIndex = steps.findIndex((step) => step.stepOrder === over.id);
         setSteps(arrayMove(steps, oldIndex, newIndex));
     }
+
+function handleDurationChange(targetStepOrder: number, newValue: number) {
+    setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutStep" && step.stepOrder === targetStepOrder
+            ? { ...step, durationValue: newValue }
+            : step
+    ));
+}
+
+function handleIntensityChange(targetStepOrder: number, newIntensity: StepIntensity) {
+    setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutStep" && step.stepOrder === targetStepOrder
+            ? { ...step, intensity: newIntensity }
+            : step
+    ));
+}
+
+function handleTargetTypeChange(targetStepOrder: number, newTargetType: 'PACE' | 'HEART_RATE') {
+    let newTarget: Target;
+    switch (newTargetType) {
+        case 'PACE':
+            newTarget = { targetType: "PACE", paceMinValue: 0.0, paceMaxValue: 0.0 };
+            break;
+        case 'HEART_RATE':
+            newTarget = { targetType: "HEART_RATE", hrMinValue: 0.0, hrMaxValue: 0.0 };
+            break;
+        default:
+            throw new Error(`Unhandled target type: ${newTargetType}`);
+    }
+    setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutStep" && step.stepOrder === targetStepOrder
+            ? { ...step, target: newTarget }
+            : step
+    ));
+}
+
+function handleRemoveTarget(targetStepOrder: number) {
+    setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutStep" && step.stepOrder === targetStepOrder
+            ? { ...step, target: undefined }
+            : step
+    ));
+}
+
+function handleTargetValueChange(targetStepOrder: number, field: string, newValue: number) {
+    setSteps(mapStepsRecursive(steps, (step) => {
+        if (step.type !== "WorkoutStep") return step;
+        if (step.stepOrder !== targetStepOrder || !step.target) return step;
+        return { ...step, target: { ...step.target, [field]: newValue } as Target };
+    }));
+}
 
     function mapStepsRecursive(
     steps: WorkoutStep[],
@@ -133,6 +136,14 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     });
 }
 
+    function handleRepeatCountChange(targetStepOrder: number, newCount: number) {
+        setSteps(mapStepsRecursive(steps, (step) => 
+        step.type === "WorkoutRepeatStep" && step.stepOrder === targetStepOrder ?
+        {...step, repeatValue: newCount }
+        : step 
+        ))
+    }
+
     function renderStep(step: WorkoutStep): React.ReactNode {
         if (step.type === "WorkoutRepeatStep") {
             return (
@@ -140,6 +151,7 @@ function WorkoutView({ workout }: WorkoutViewProps) {
                     key={step.stepOrder}
                     step={step}
                     renderStep={renderStep}
+                    handleRepeatCountChange={handleRepeatCountChange}
                 />
             );
         }

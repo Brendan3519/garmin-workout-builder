@@ -1,7 +1,7 @@
 "use client";
 
 import { WorkoutStep, StepIntensity, NormalStep } from '../types/workout';
-import { isDurationDraftInvalid, targetDraftKey } from './WorkoutView';
+import { isNumberDraftInvalid, targetDraftKey } from './WorkoutView';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -38,7 +38,7 @@ function SortableStep({
     handleTargetValueChange,
 }: SortableStepProps) {
     const draft = durationDrafts[step.stepOrder];
-    const showError = isDurationDraftInvalid(draft);
+    const showError = isNumberDraftInvalid(draft);
 
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.stepOrder });
 
@@ -73,7 +73,7 @@ function SortableStep({
                 }
                 onFocus={() => handleDurationFocus(step.durationValue)}
                 onBlur={() => {
-                    const isValid = !isDurationDraftInvalid(draft);
+                    const isValid = !isNumberDraftInvalid(draft);
                     const newValue = isValid ? Number(draft) : step.durationValue;
                     if (isValid && draft !== undefined) {
                         handleDurationChange(step.stepOrder, newValue);
