@@ -5,6 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import { isNumberDraftInvalid } from './WorkoutView';
+import posthog from 'posthog-js';
 
 interface SortableRepeatStepProps {
     step: RepeatStep;
@@ -38,6 +39,16 @@ function SortableRepeatStep({ step, renderStep, handleRepeatCountChange }: Sorta
                             handleRepeatCountChange(step.stepOrder, newValue);
                         }
                         setRepeatDraft(undefined);
+                        if (isValid && repeatDraft !== undefined) {
+                            handleRepeatCountChange(step.stepOrder, newValue);
+                            if (newValue !== step.repeatValue) {
+                                posthog.capture('workout_repeat_count_edited', {
+                                    step_order: step.stepOrder,
+                                    old_value: step.repeatValue,
+                                    new_value: newValue,
+                                });
+                            }
+                        }
                     }}
                 />
             </strong>

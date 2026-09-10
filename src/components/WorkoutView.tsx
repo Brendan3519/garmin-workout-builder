@@ -136,6 +136,21 @@ function handleTargetValueChange(targetStepOrder: number, field: string, newValu
     });
 }
 
+    function findContainingList(steps: WorkoutStep[], targetStepOrder: number): WorkoutStep[] | null {
+        for (const step of steps) {
+            if (step.stepOrder === targetStepOrder) {
+                return steps;
+            }
+            if (step.type === "WorkoutRepeatStep") {
+                const found = findContainingList(step.steps, targetStepOrder);
+                if (found !== null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     function handleRepeatCountChange(targetStepOrder: number, newCount: number) {
         setSteps(mapStepsRecursive(steps, (step) => 
         step.type === "WorkoutRepeatStep" && step.stepOrder === targetStepOrder ?
@@ -190,6 +205,7 @@ function handleTargetValueChange(targetStepOrder: number, field: string, newValu
                 </SortableContext>
             </DndContext>
             <button onClick={handleAddStep}>Add Step</button>
+            
         </div>
     );
 }
