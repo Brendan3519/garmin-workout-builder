@@ -65,12 +65,21 @@ function WorkoutView({ workout }: WorkoutViewProps) {
 
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
-        if (!over || active.id === over.id) {
-            return;
-        }
-        const oldIndex = steps.findIndex((step) => step.stepOrder === active.id);
-        const newIndex = steps.findIndex((step) => step.stepOrder === over.id);
-        setSteps(arrayMove(steps, oldIndex, newIndex));
+        if (!over || active.id === over.id) { return; }
+
+        const containingList = findContainingList(steps, active.id as number);
+        if (containingList === null) { return; }
+
+        const oldIndex = containingList.findIndex((step) => step.stepOrder === active.id);
+        const newIndex = containingList.findIndex((step) => step.stepOrder === over.id);
+        const reordered = arrayMove(containingList, oldIndex, newIndex);
+        
+
+        setSteps(mapStepsRecursive(steps, (step) =>
+            step.type === "WorkoutRepeatStep" && step.steps === containingList 
+            ? {...step, steps: reordered} 
+                : step
+        ));
     }
 
 function handleDurationChange(targetStepOrder: number, newValue: number) {

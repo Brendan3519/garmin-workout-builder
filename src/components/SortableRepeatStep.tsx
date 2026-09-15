@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import { isNumberDraftInvalid } from './WorkoutView';
 import posthog from 'posthog-js';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 interface SortableRepeatStepProps {
     step: RepeatStep;
@@ -35,10 +36,7 @@ function SortableRepeatStep({ step, renderStep, handleRepeatCountChange }: Sorta
                     onBlur={() => {
                         const isValid = !isNumberDraftInvalid(repeatDraft);
                         const newValue = isValid ? Math.max(1, Number(repeatDraft)) : step.repeatValue;
-                        if (isValid && repeatDraft !== undefined) {
-                            handleRepeatCountChange(step.stepOrder, newValue);
-                        }
-                        setRepeatDraft(undefined);
+                        
                         if (isValid && repeatDraft !== undefined) {
                             handleRepeatCountChange(step.stepOrder, newValue);
                             if (newValue !== step.repeatValue) {
@@ -49,11 +47,17 @@ function SortableRepeatStep({ step, renderStep, handleRepeatCountChange }: Sorta
                                 });
                             }
                         }
+                        setRepeatDraft(undefined);
                     }}
                 />
             </strong>
             <div style={{ paddingLeft: '16px' }}>
+                <SortableContext
+                    items={step.steps.map((subStep) => subStep.stepOrder)}
+                    strategy={verticalListSortingStrategy}
+                >
                 {step.steps.map((subStep) => renderStep(subStep))}
+                </SortableContext>
             </div>
         </div>
     );
