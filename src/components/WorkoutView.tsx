@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { StepIntensity, Workout, WorkoutStep, Target } from '../types/workout';
+import { StepIntensity, Workout, WorkoutStep, Target, RepeatStep } from '../types/workout';
 import posthog from 'posthog-js';
 import SortableStep from './SortableStep';
 import SortableRepeatStep from './SortableRepeatStep';
@@ -63,24 +63,34 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps(steps.filter((step) => step.stepOrder !== targetStepOrder));
     }
 
-    function handleDragEnd(event: DragEndEvent) {
-        const { active, over } = event;
-        if (!over || active.id === over.id) { return; }
+function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) { return; }
 
-        const containingList = findContainingList(steps, active.id as number);
-        if (containingList === null) { return; }
+    const containingList = findContainingList(steps, active.id as number);
+    if (containingList === null) { return; }
 
-        const oldIndex = containingList.findIndex((step) => step.stepOrder === active.id);
-        const newIndex = containingList.findIndex((step) => step.stepOrder === over.id);
-        const reordered = arrayMove(containingList, oldIndex, newIndex);
-        
+    const oldIndex = containingList.findIndex((step) => step.stepOrder === active.id);
+    const newIndex = containingList.findIndex((step) => step.stepOrder === over.id);
+    const reordered = arrayMove(containingList, oldIndex, newIndex);
 
-        setSteps(mapStepsRecursive(steps, (step) =>
-            step.type === "WorkoutRepeatStep" && step.steps === containingList 
-            ? {...step, steps: reordered} 
-                : step
-        ));
+    if (containingList === steps) {
+        setSteps(reordered);
+        return;
     }
+
+    const containingBlock = findContainingBlock(steps, active.id as number);
+
+    if (containingBlock === null) {
+        return;
+    }
+
+    setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutRepeatStep" && step.stepOrder === containingBlock.stepOrder
+            ? { ...step, steps: reordered }
+            : step
+    ));
+}
 
 function handleDurationChange(targetStepOrder: number, newValue: number) {
     setSteps(mapStepsRecursive(steps, (step) =>
@@ -145,20 +155,35 @@ function handleTargetValueChange(targetStepOrder: number, field: string, newValu
     });
 }
 
-    function findContainingList(steps: WorkoutStep[], targetStepOrder: number): WorkoutStep[] | null {
-        for (const step of steps) {
-            if (step.stepOrder === targetStepOrder) {
-                return steps;
-            }
-            if (step.type === "WorkoutRepeatStep") {
-                const found = findContainingList(step.steps, targetStepOrder);
-                if (found !== null) {
-                    return found;
-                }
+function findContainingList(steps: WorkoutStep[], targetStepOrder: number): WorkoutStep[] | null {
+    for (const step of steps) {
+        if (step.stepOrder === targetStepOrder) {
+            return steps;
+        }
+        if (step.type === "WorkoutRepeatStep") {
+            const found = findContainingList(step.steps, targetStepOrder);
+            if (found !== null) {
+                return found;
             }
         }
-        return null;
     }
+    return null;
+}
+
+function findContainingBlock(steps: WorkoutStep[], targetStepOrder: number): RepeatStep | null {
+    for (const step of steps) {
+        if (step.type === "WorkoutRepeatStep") {
+            if (step.steps.some((subStep) => subStep.stepOrder === targetStepOrder)) {
+                return step;
+            }
+            const found = findContainingBlock(step.steps, targetStepOrder);
+            if (found !== null) {
+                return found;
+            }
+        }
+    }
+    return null;
+}
 
     function handleRepeatCountChange(targetStepOrder: number, newCount: number) {
         setSteps(mapStepsRecursive(steps, (step) => 
