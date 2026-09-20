@@ -12,9 +12,11 @@ interface SortableRepeatStepProps {
     step: RepeatStep;
     renderStep: (step: WorkoutStep) => React.ReactNode;
     handleRepeatCountChange: (targetStepOrder: number, newCount: number) => void;
+    handleRemoveStep: (targetStepOrder: number) => void;
+    handleAddStepToBlock: (targetBlockStepOrder: number) => void;
 }
 
-function SortableRepeatStep({ step, renderStep, handleRepeatCountChange }: SortableRepeatStepProps) {
+function SortableRepeatStep({ step, renderStep, handleRepeatCountChange, handleRemoveStep, handleAddStepToBlock }: SortableRepeatStepProps) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.stepOrder });
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -51,6 +53,8 @@ function SortableRepeatStep({ step, renderStep, handleRepeatCountChange }: Sorta
                     }}
                 />
             </strong>
+            <button onClick={() => handleRemoveStep(step.stepOrder)}>Remove</button>
+            <button onClick={() => handleAddStepToBlock(step.stepOrder)}>Add Step to Block</button>
             <div style={{ paddingLeft: '16px' }}>
                 <SortableContext
                     items={step.steps.map((subStep) => subStep.stepOrder)}

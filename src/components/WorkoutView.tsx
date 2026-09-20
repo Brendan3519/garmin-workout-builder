@@ -46,8 +46,9 @@ function WorkoutView({ workout }: WorkoutViewProps) {
     }
 
     function handleAddStep() {
-        const nextStepOrder = steps.length > 0
-            ? Math.max(...steps.map((step) => step.stepOrder)) + 1
+        const allStepOrders = collectStepOrders(steps);
+        const nextStepOrder = allStepOrders.length > 0
+            ? Math.max(...allStepOrders) + 1
             : 1;
         const newStep: WorkoutStep = {
             type: 'WorkoutStep',
@@ -59,8 +60,38 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         setSteps([...steps, newStep]);
     }
 
+    function handleAddStepToBlock(targetBlockStepOrder: number){
+        const allStepOrders = collectStepOrders(steps);
+        const nextStepOrder = allStepOrders.length > 0
+            ? Math.max(...allStepOrders) + 1
+            : 1;
+        const newStep: WorkoutStep = {
+            type: 'WorkoutStep',
+            stepOrder: nextStepOrder,
+            intensity: 'ACTIVE',
+            durationType: 'DISTANCE',
+            durationValue: 1000,
+        };
+        setSteps(mapStepsRecursive(steps, (step) =>
+        step.type === "WorkoutRepeatStep" && step.stepOrder === targetBlockStepOrder
+        ? {...step, steps: [...step.steps, newStep]} :
+        step
+    ))
+    }
+
     function handleRemoveStep(targetStepOrder: number) {
-        setSteps(steps.filter((step) => step.stepOrder !== targetStepOrder));
+        const containingBlock = findContainingBlock(steps, targetStepOrder)
+        if (containingBlock === null){
+            setSteps(steps.filter((step) => step.stepOrder !== targetStepOrder));
+            return;
+        }
+
+        setSteps(mapStepsRecursive(steps, (step) => 
+            step.type === "WorkoutRepeatStep" && step.stepOrder === containingBlock.stepOrder
+            ? {...step, steps:step.steps.filter((subStep) => subStep.stepOrder !== targetStepOrder) }
+            : step 
+        ))
+        
     }
 
 function handleDragEnd(event: DragEndEvent) {
@@ -185,6 +216,20 @@ function findContainingBlock(steps: WorkoutStep[], targetStepOrder: number): Rep
     return null;
 }
 
+function collectStepOrders(steps: WorkoutStep[]): number[] {
+    const result: number[] = []
+    for (const step of steps) {
+        if (step.type === "WorkoutStep"){
+            result.push(step.stepOrder);
+        }
+        else if (step.type === "WorkoutRepeatStep"){
+            result.push(step.stepOrder)
+            result.push(...collectStepOrders(step.steps))
+        }
+    }
+    return result;
+}
+
     function handleRepeatCountChange(targetStepOrder: number, newCount: number) {
         setSteps(mapStepsRecursive(steps, (step) => 
         step.type === "WorkoutRepeatStep" && step.stepOrder === targetStepOrder ?
@@ -201,6 +246,8 @@ function findContainingBlock(steps: WorkoutStep[], targetStepOrder: number): Rep
                     step={step}
                     renderStep={renderStep}
                     handleRepeatCountChange={handleRepeatCountChange}
+                    handleRemoveStep={handleRemoveStep}
+                    handleAddStepToBlock={handleAddStepToBlock}
                 />
             );
         }
