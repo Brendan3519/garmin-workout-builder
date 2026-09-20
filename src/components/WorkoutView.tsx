@@ -94,6 +94,27 @@ function WorkoutView({ workout }: WorkoutViewProps) {
         
     }
 
+    function handleAddRepeatBlock(){
+        const maxOrder = collectStepOrders(steps).length > 0
+            ? Math.max(...collectStepOrders(steps))
+            : 0;
+        const blockOrder = maxOrder + 1;
+        const activeOrder = maxOrder + 2;
+        const recoveryOrder = maxOrder + 3;
+
+        const newBlock: RepeatStep = {
+            type: 'WorkoutRepeatStep',
+            stepOrder: blockOrder,
+            repeatValue: 2,
+            steps: [
+                { type: 'WorkoutStep', stepOrder: activeOrder, intensity: 'ACTIVE', durationType: 'DISTANCE', durationValue: 1000 },
+                { type: 'WorkoutStep', stepOrder: recoveryOrder, intensity: 'RECOVERY', durationType: 'DISTANCE', durationValue: 200 },
+            ],
+            };
+        
+        setSteps([...steps, newBlock]);
+    }
+
 function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) { return; }
@@ -286,6 +307,7 @@ function collectStepOrders(steps: WorkoutStep[]): number[] {
                 </SortableContext>
             </DndContext>
             <button onClick={handleAddStep}>Add Step</button>
+            <button onClick={handleAddRepeatBlock}>Add Repeat</button>
             
         </div>
     );
