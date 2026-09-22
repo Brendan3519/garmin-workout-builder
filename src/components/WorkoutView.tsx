@@ -312,5 +312,5 @@ function collectStepOrders(steps: WorkoutStep[]): number[] {
         </div>
     );
 }
-
+    
 export default WorkoutView;
