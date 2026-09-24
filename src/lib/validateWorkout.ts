@@ -10,5 +10,14 @@
  function isValidStep(input: unknown): input is WorkoutStep {
     if (!(typeof input === "object" && input !== null)) return false;
 
-    return true;
+    const obj = input as Record<string, unknown>;
+    if (obj.type === "WorkoutStep"){
+      return true;
+    }
+
+    if (obj.type === "WorkoutRepeatStep"){
+      return typeof obj.stepOrder === "number" && typeof obj.repeatValue === "number" && Array.isArray(obj.steps) && obj.steps.every(isValidStep);
+    }
+
+    return false;
  }
