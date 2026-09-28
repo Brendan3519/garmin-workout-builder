@@ -12,6 +12,7 @@ export function isValidWorkout(input: unknown): input is Workout {
     return typeof obj.workoutName === "string" && 
     obj.sport === "RUNNING" && 
     Array.isArray(obj.steps) && 
+    obj.steps.length > 0 &&
     obj.steps.every(isValidStep);
  }
 
@@ -36,6 +37,7 @@ export function isValidWorkout(input: unknown): input is Workout {
       Number.isInteger(obj.repeatValue) &&
       obj.repeatValue >= 1 &&
       Array.isArray(obj.steps) && 
+      obj.steps.length > 0 &&
       obj.steps.every(isValidStep);
     }
 

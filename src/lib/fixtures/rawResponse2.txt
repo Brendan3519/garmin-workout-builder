@@ -1,0 +1,19 @@
+{
+  "workoutName": "40 min easy run with 6x400m intervals",
+  "sport": "RUNNING",
+  "steps": [
+    {
+      "type": "WorkoutStep",
+      "stepOrder": 1,
+      "intensity": "WARMUP",
+      "durationType": "TIME",
+      "durationValue": 2400
+    },
+    {
+      "type": "WorkoutRepeatStep",
+      "stepOrder": 2,
+      "repeatValue": 6,
+      "steps": []
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { workoutJsonSchema } from "../../../lib/workoutSchema";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -13,10 +14,12 @@ export async function POST(request: Request) {
   const text = obj.text;
 
   const interaction = await ai.interactions.create({
-    model: "gemini-3.8-flash",
-    input: `Convert this running workout description into JSON: ${text}`,
-    generation_config: {
-      thinking_level: "low",
+    model: "gemini-3.5-flash-lite",
+    input: `Convert this running workout description into a Garmin workout: ${text}`,
+    response_format: {
+      type: "text",
+      mime_type: "application/json",
+      schema: workoutJsonSchema,
     },
   });
 

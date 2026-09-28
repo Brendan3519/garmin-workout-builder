@@ -1,0 +1,37 @@
+Here is the workout converted into a structured JSON format:
+
+{
+  "workout_type": "running",
+  "name": "Easy Run with 400m Intervals",
+  "structure": [
+    {
+      "step": 1,
+      "type": "warmup",
+      "description": "Easy run",
+      "duration": {
+        "value": 40,
+        "unit": "minutes"
+      },
+      "intensity": "easy"
+    },
+    {
+      "step": 2,
+      "type": "intervals",
+      "repetitions": 6,
+      "work": {
+        "type": "interval",
+        "distance": {
+          "value": 400,
+          "unit": "meters"
+        },
+        "intensity": "hard"
+      },
+      "recovery": {
+        "type": "rest",
+        "description": "Rest or jog recovery between intervals",
+        "duration": null
+      }
+    }
+  ]
+}
+*Note: Since the original description did not specify the recovery duration or pace between the 400m repeats, the recovery field is included as a placeholder.*
