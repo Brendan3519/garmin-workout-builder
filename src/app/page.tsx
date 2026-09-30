@@ -1,6 +1,7 @@
 import WorkoutView from '../components/WorkoutView';
 import { Workout } from '../types/workout';
 
+
 const sevenKRun: Workout = {
   workoutName: 'Hard 7km Run',
   sport: 'RUNNING',
@@ -20,5 +21,6 @@ const sevenKRun: Workout = {
 };
 
 export default function Home() {
+
   return <WorkoutView workout={sevenKRun} />;
 }
