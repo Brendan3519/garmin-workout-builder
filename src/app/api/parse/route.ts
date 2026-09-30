@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { workoutJsonSchema } from "@/lib/workoutSchema";
 import { parseWorkout } from "@/lib/parseWorkout";
+import { renumberSteps } from "@/lib/renumberSteps";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -41,5 +42,5 @@ Workout description: ${text}`;
   return Response.json({ error: result.error }, { status: 502 });
 }
 
-  return Response.json({ workout: result.workout });
+  return Response.json({ workout: {...result.workout, steps: renumberSteps(result.workout.steps)} });
 }
