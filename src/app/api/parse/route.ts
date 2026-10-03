@@ -6,7 +6,14 @@ import { renumberSteps } from "@/lib/renumberSteps";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: Request) {
-  const body: unknown = await request.json();
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Request body was not valid JSON." }, { status: 400 });
+  }
+
 
   if (!(typeof body === "object" && body !== null)) return Response.json({ error: "Request body must include a non-empty 'text' string." }, { status: 400 });
 
@@ -25,22 +32,30 @@ export async function POST(request: Request) {
 
 Workout description: ${text}`;
 
-  const interaction = await ai.interactions.create({
-    model: "gemini-3.5-flash-lite",
-    input: prompt,
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: workoutJsonSchema,
-    },
-  });
+  let outputText: string;
+  try {
+    const interaction = await ai.interactions.create({
+      model: "gemini-3.5-flash-lite",
+      input: prompt,
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: workoutJsonSchema,
+      },
+    });
+    outputText = interaction.output_text ?? "";
+  } catch (err) {
+    console.error("Gemini call failed:", err);
+    return Response.json({ error: "Service call failed." }, { status: 502 });
+  }
 
-  const result = parseWorkout(interaction.output_text ?? "");
+  const result = parseWorkout(outputText);
+
 
   if (!result.ok) {
-  console.error("Parse failed:", result.error, interaction.output_text);
-  return Response.json({ error: result.error }, { status: 502 });
-}
+    console.error("Parse failed:", result.error, outputText);
+    return Response.json({ error: result.error }, { status: 502 });
+  }
 
-  return Response.json({ workout: {...result.workout, steps: renumberSteps(result.workout.steps)} });
+  return Response.json({ workout: { ...result.workout, steps: renumberSteps(result.workout.steps) } });
 }
